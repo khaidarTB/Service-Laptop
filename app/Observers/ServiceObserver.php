@@ -8,10 +8,8 @@ use Illuminate\Support\Facades\Log;
 
 class ServiceObserver
 {
-    public function creating(Service $service)
+    public function creating(Service $service): void
     {
-        // Generate Automatic Ticket Number
-        // Format: SRV-YYYYMMDD-001
         $date = now()->format('Ymd');
         $latestService = Service::whereDate('created_at', now()->toDateString())->orderBy('id', 'desc')->first();
         
@@ -19,7 +17,7 @@ class ServiceObserver
         if ($latestService) {
             $lastTicket = $latestService->ticket_number;
             $parts = explode('-', $lastTicket);
-            if(isset($parts[2])) {
+            if (isset($parts[2])) {
                 $number = intval($parts[2]) + 1;
             }
         }
@@ -29,7 +27,6 @@ class ServiceObserver
 
     public function created(Service $service): void
     {
-        // Initial Log
         ServiceStatusLog::create([
             'service_id' => $service->id,
             'old_status' => null,
@@ -37,43 +34,55 @@ class ServiceObserver
             'notes' => 'Servis didaftarkan',
             'changed_by' => auth()->id() ?? null,
         ]);
+
+        $notifyStatuses = ['antrean'];
+        if (in_array($service->status, $notifyStatuses)) {
+            $this->sendWhatsAppNotification($service, 'booking_confirmed');
+        }
     }
 
     public function updated(Service $service): void
     {
-        // Check if status is dirty (changed)
         if ($service->isDirty('status')) {
             $oldStatus = $service->getOriginal('status');
             $newStatus = $service->status;
 
-            ServiceStatusLog::create([
-                'service_id' => $service->id,
-                'old_status' => $oldStatus,
-                'new_status' => $newStatus,
-                'notes' => 'Status diubah ke ' . $newStatus,
-                'changed_by' => auth()->id() ?? null,
-            ]);
-
-            // WhatsApp Notification Trigger
             $notifyStatuses = ['pemeriksaan', 'menunggu_persetujuan', 'perbaikan', 'selesai'];
             
             if (in_array($newStatus, $notifyStatuses)) {
-                $this->sendWhatsAppNotification($service);
+                $this->sendWhatsAppNotification($service, 'status_update');
             }
         }
     }
     
-    private function sendWhatsAppNotification(Service $service)
+    private function sendWhatsAppNotification(Service $service, string $type = 'status_update'): void
     {
-        // TODO: Implement actual WhatsApp API call (Fonnte, Wazzup, Twilio, etc)
-        // For now, we just log it as a placeholder.
-        
-        $customerName = $service->customer->name;
-        $customerWa = $service->customer->whatsapp;
-        $status = ucfirst(str_replace('_', ' ', $service->status));
-        
-        $message = "Halo {$customerName}, status servis laptop Anda dengan tiket {$service->ticket_number} saat ini adalah *{$status}*. Silakan cek detailnya di website kami.";
-        
-        Log::info("WhatsApp Notification sent to {$customerWa}: {$message}");
+        $apiUrl = config('services.whatsapp.api_url');
+        $apiKey = config('services.whatsapp.api_key');
+
+        if (!$apiKey || !$service->customer || !$service->customer->whatsapp) {
+            Log::info('WhatsApp API not configured or no customer phone', ['service_id' => $service->id, 'type' => $type]);
+            return;
+        }
+
+        $phone = $service->getPhone();
+        $message = $service->getNotificationMessage();
+
+        try {
+            \Illuminate\Support\Facades\Http::timeout(10)
+                ->withHeaders([
+                    'Authorization' => $apiKey,
+                    'Content-Type' => 'application/json',
+                ])
+                ->post($apiUrl, [
+                    'target' => $phone,
+                    'message' => $message,
+                    'typing' => true,
+                ]);
+            
+            Log::info('WhatsApp notification sent', ['service_id' => $service->id, 'phone' => $phone, 'type' => $type]);
+        } catch (\Exception $e) {
+            Log::error('WhatsApp API failed', ['service_id' => $service->id, 'error' => $e->getMessage()]);
+        }
     }
 }

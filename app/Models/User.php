@@ -41,6 +41,11 @@ class User extends Authenticatable
         return $this->hasMany(ServiceStatusLog::class, 'changed_by');
     }
 
+    public function comments(): HasMany
+    {
+        return $this->hasMany(ServiceComment::class);
+    }
+
     public function customerProfile()
     {
         return $this->hasOne(Customer::class, 'user_id');

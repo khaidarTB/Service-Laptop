@@ -44,8 +44,12 @@ class ServiceController extends Controller
             ->withQueryString();
 
         $statuses = ['antrean', 'pemeriksaan', 'menunggu_persetujuan', 'perbaikan', 'selesai', 'diambil', 'batal'];
+        $customers = Customer::orderBy('name')->get();
+        $technicians = User::where('role', 'teknisi')->orderBy('name')->get();
+        $spareparts = Sparepart::where('stock', '>', 0)->get();
+        $ticketNumber = Service::generateTicketNumber();
 
-        return view('admin.services.index', compact('services', 'status', 'search', 'statuses'));
+        return view('admin.services.index', compact('services', 'status', 'search', 'statuses', 'customers', 'technicians', 'spareparts', 'ticketNumber'));
     }
 
     public function create()
@@ -116,7 +120,7 @@ class ServiceController extends Controller
 
     public function show(Service $service)
     {
-        $service->load(['customer', 'technician', 'details.sparepart', 'statusLogs.user', 'photos', 'transaction']);
+        $service->load(['customer', 'technician', 'details.sparepart', 'statusLogs.user', 'photos', 'transaction', 'comments.user', 'latestApproval']);
         $technicians = User::where('role', 'teknisi')->orderBy('name')->get();
         $spareparts = Sparepart::where('stock', '>', 0)->get();
 
@@ -146,9 +150,8 @@ class ServiceController extends Controller
             'estimated_finish' => 'nullable|date',
         ]);
 
-        $oldFee = $service->service_fee;
-        $newFee = $request->service_fee ?? 0;
         $sparepartTotal = $service->details->sum('subtotal');
+        $newFee = $request->service_fee ?? 0;
 
         $service->update([
             'customer_id' => $request->customer_id,
@@ -182,7 +185,7 @@ class ServiceController extends Controller
             return redirect()->back()->with('error', 'Status tidak berubah.');
         }
 
-        DB::transaction(function() use ($service, $oldStatus, $newStatus, $request) {
+        DB::transaction(function() use ($service, $newStatus, $request) {
             $data = ['status' => $newStatus];
             if ($newStatus === 'selesai' || $newStatus === 'diambil') {
                 $data['date_completed'] = Carbon::now();
@@ -192,21 +195,12 @@ class ServiceController extends Controller
 
             ServiceStatusLog::create([
                 'service_id' => $service->id,
-                'old_status' => $oldStatus,
+                'old_status' => $service->getOriginal('status'),
                 'new_status' => $newStatus,
                 'notes' => $request->notes ?? ('Status diubah menjadi ' . $service->status_label),
                 'changed_by' => auth()->id(),
             ]);
         });
-
-        $waUrl = $service->whatsapp_url;
-        $notifyTriggers = ['pemeriksaan', 'menunggu_persetujuan', 'perbaikan', 'selesai'];
-
-        if (in_array($newStatus, $notifyTriggers) && $waUrl) {
-            return redirect()->route('admin.services.show', $service->id)
-                ->with('success', 'Status berhasil diubah menjadi ' . $service->status_label . '!')
-                ->with('wa_url', $waUrl);
-        }
 
         return redirect()->route('admin.services.show', $service->id)
             ->with('success', 'Status berhasil diubah menjadi ' . $service->status_label . '!');
@@ -228,10 +222,8 @@ class ServiceController extends Controller
         DB::transaction(function() use ($service, $sparepart, $request) {
             $subtotal = $sparepart->selling_price * $request->quantity;
 
-            // Reduce stock
             $sparepart->decrement('stock', $request->quantity);
 
-            // Add or update detail
             $existing = ServiceDetail::where('service_id', $service->id)
                 ->where('sparepart_id', $sparepart->id)
                 ->first();
@@ -249,7 +241,6 @@ class ServiceController extends Controller
                 ]);
             }
 
-            // Recalculate total cost
             $sparepartSum = ServiceDetail::where('service_id', $service->id)->sum('subtotal');
             $service->update(['total_cost' => $service->service_fee + $sparepartSum]);
         });

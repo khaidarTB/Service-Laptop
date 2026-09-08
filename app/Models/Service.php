@@ -7,6 +7,8 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 class Service extends Model
 {
@@ -67,6 +69,21 @@ class Service extends Model
         return $this->hasMany(ServicePhoto::class);
     }
 
+    public function comments(): HasMany
+    {
+        return $this->hasMany(ServiceComment::class);
+    }
+
+    public function approvals(): HasMany
+    {
+        return $this->hasMany(ServiceApproval::class);
+    }
+
+    public function latestApproval(): HasOne
+    {
+        return $this->hasOne(ServiceApproval::class)->latest();
+    }
+
     public static function generateTicketNumber(): string
     {
         $prefix = 'SRV-' . date('Ymd') . '-';
@@ -116,13 +133,70 @@ class Service extends Model
             return null;
         }
 
+        $phone = $this->getPhone();
+        $message = $this->getNotificationMessage();
+
+        return "https://wa.me/" . $phone . "?text=" . urlencode($message);
+    }
+
+    public function getPhone(): string
+    {
         $phone = preg_replace('/[^0-9]/', '', $this->customer->whatsapp);
         if (str_starts_with($phone, '0')) {
             $phone = '62' . substr($phone, 1);
         }
+        return $phone;
+    }
 
-        $message = "Halo *" . $this->customer->name . "*,\n\nStatus perbaikan laptop Anda (*" . $this->laptop_brand . " " . $this->laptop_type . "*) dengan Tiket *" . $this->ticket_number . "* telah diperbarui menjadi *" . strtoupper($this->status_label) . "*.\n\nEstimasi Biaya: Rp " . number_format($this->total_cost > 0 ? $this->total_cost : $this->estimated_cost, 0, ',', '.') . "\nSilakan cek detail progres terbaru di website LaptopCare.\n\nTerima Kasih!";
+    public function getNotificationMessage(): string
+    {
+        $cost = $this->total_cost > 0 ? $this->total_cost : $this->estimated_cost;
 
-        return "https://wa.me/" . $phone . "?text=" . urlencode($message);
+        if ($this->status === 'menunggu_persetujuan') {
+            $approveUrl = route('customer.services.approve-form', $this->id);
+            return "Halo *" . $this->customer->name . "*,\n\n"
+                . "Laptop Anda (*" . $this->laptop_brand . " " . $this->laptop_type . "*) dengan Tiket *" . $this->ticket_number . "* sudah selesai diperiksa.\n\n"
+                . "*Rincian Biaya:*\n"
+                . "Jasa Servis: Rp " . number_format($this->service_fee, 0, ',', '.') . "\n"
+                . "Sparepart: Rp " . number_format($this->details->sum('subtotal'), 0, ',', '.') . "\n"
+                . "*Total: Rp " . number_format($cost, 0, ',', '.') . "*\n\n"
+                . "Silakan klik link berikut untuk menyetujui atau menolak:\n"
+                . $approveUrl . "\n\n"
+                . "Terima Kasih!";
+        }
+
+        return "Halo *" . $this->customer->name . "*,\n\n"
+            . "Status perbaikan laptop Anda (*" . $this->laptop_brand . " " . $this->laptop_type . "*) dengan Tiket *" . $this->ticket_number . "* telah diperbarui menjadi *" . strtoupper($this->status_label) . "*.\n\n"
+            . "Estimasi Biaya: Rp " . number_format($cost, 0, ',', '.') . "\n"
+            . "Silakan cek detail progres terbaru di website LaptopCare.\n\n"
+            . "Terima Kasih!";
+    }
+
+    public function sendWhatsAppNotification(): void
+    {
+        $apiUrl = config('services.whatsapp.api_url');
+        $apiKey = config('services.whatsapp.api_key');
+        $device = config('services.whatsapp.device');
+
+        if (!$apiUrl || !$apiKey || !$this->customer || !$this->customer->whatsapp) {
+            Log::info('WhatsApp API not configured or no customer phone', ['service_id' => $this->id]);
+            return;
+        }
+
+        $phone = $this->getPhone();
+        $message = $this->getNotificationMessage();
+
+        try {
+            Http::timeout(10)->post($apiUrl, [
+                'device' => $device,
+                'number' => $phone,
+                'message' => $message,
+            ], [
+                'Authorization' => $apiKey,
+                'Content-Type' => 'application/json',
+            ]);
+        } catch (\Exception $e) {
+            Log::error('WhatsApp API failed', ['service_id' => $this->id, 'error' => $e->getMessage()]);
+        }
     }
 }

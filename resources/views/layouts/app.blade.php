@@ -189,34 +189,27 @@
                             <button @click="show = false" class="text-rose-500 hover:text-rose-700"><i class="fas fa-times"></i></button>
                         </div>
                     @endif
+
+                    @if ($errors->any())
+                        <div class="mb-6 p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-900 flex items-start gap-3 shadow-xs" x-data="{ show: true }" x-show="show">
+                            <i class="fas fa-circle-exclamation mt-1 text-rose-600 text-lg"></i>
+                            <div class="flex-1">
+                                <h4 class="font-bold text-sm">Terdapat Kesalahan Input!</h4>
+                                <ul class="list-disc list-inside text-xs sm:text-sm mt-1">
+                                    @foreach ($errors->all() as $error)
+                                        <li>{{ $error }}</li>
+                                    @endforeach
+                                </ul>
+                            </div>
+                            <button @click="show = false" class="text-rose-500 hover:text-rose-700"><i class="fas fa-times"></i></button>
+                        </div>
+                    @endif
                     
                     {{ $slot }}
                 </main>
             </div>
         </div>
         
-        <!-- WhatsApp Auto Alert Popup Script if status updated -->
-        @if(session('wa_url'))
-            <script>
-                document.addEventListener('DOMContentLoaded', function() {
-                    Swal.fire({
-                        title: 'Notifikasi WhatsApp!',
-                        text: 'Status servis telah diperbarui. Apakah Anda ingin mengirimi pelanggan pesan notifikasi WhatsApp otomatis sekarang?',
-                        icon: 'info',
-                        showCancelButton: true,
-                        confirmButtonColor: '#2563eb',
-                        cancelButtonColor: '#64748b',
-                        confirmButtonText: '<i class="fab fa-whatsapp mr-1"></i> Kirim WA Pelanggan',
-                        cancelButtonText: 'Tutup'
-                    }).then((result) => {
-                        if (result.isConfirmed) {
-                            window.open("{{ session('wa_url') }}", '_blank');
-                        }
-                    });
-                });
-            </script>
-        @endif
-
         @stack('scripts')
     </body>
 </html>

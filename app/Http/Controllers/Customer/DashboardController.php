@@ -20,7 +20,7 @@ class DashboardController extends Controller
         $services = collect();
         if ($customer) {
             $services = Service::where('customer_id', $customer->id)
-                ->with(['technician', 'details.sparepart', 'statusLogs', 'photos', 'transaction'])
+                ->with(['technician', 'details.sparepart', 'statusLogs', 'photos', 'transaction', 'comments', 'latestApproval'])
                 ->latest()
                 ->get();
         }

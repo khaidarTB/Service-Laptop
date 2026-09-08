@@ -34,7 +34,14 @@ class TransactionController extends Controller
             ->paginate(10)
             ->withQueryString();
 
-        return view('admin.transactions.index', compact('transactions', 'status', 'search'));
+        $servicesWithoutTransaction = Service::doesntHave('transaction')
+            ->with('customer')
+            ->orderBy('id', 'desc')
+            ->get();
+
+        $invoiceNumber = Transaction::generateInvoiceNumber();
+
+        return view('admin.transactions.index', compact('transactions', 'status', 'search', 'servicesWithoutTransaction', 'invoiceNumber'));
     }
 
     public function create()

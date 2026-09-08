@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\CommentController;
 
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Admin\CustomerController;
@@ -24,6 +25,13 @@ Route::post('/booking', [\App\Http\Controllers\LandingController::class, 'bookin
 // Customer Tracking (Public & Ticket-based)
 Route::get('/lacak', [CustomerServiceController::class, 'trackForm'])->name('customer.trackForm');
 Route::post('/lacak', [CustomerServiceController::class, 'track'])->name('customer.track');
+
+// Customer Approval (Public link from WA)
+Route::get('/approve/{service}', [CustomerServiceController::class, 'approveForm'])->name('customer.services.approve-form');
+Route::post('/approve/{service}', [CustomerServiceController::class, 'approve'])->name('customer.services.approve');
+
+// Payment Callback (Midtrans/Xendit webhook)
+Route::post('/payment/callback', [CustomerServiceController::class, 'paymentCallback'])->name('customer.payment.callback');
 
 // Dashboard Router based on Role
 Route::get('/dashboard', function () {
@@ -65,17 +73,25 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
 Route::middleware(['auth', 'role:teknisi'])->prefix('teknisi')->name('teknisi.')->group(function () {
     Route::get('/dashboard', [TeknisiDashboardController::class, 'index'])->name('dashboard');
     Route::resource('tasks', TaskController::class)->only(['index', 'show', 'edit', 'update']);
-    Route::post('/tasks/{service}/status', [TaskController::class, 'updateStatus'])->name('tasks.updateStatus');
-    Route::post('/tasks/{service}/spareparts', [TaskController::class, 'addSparepart'])->name('tasks.addSparepart');
-    Route::delete('/tasks/{service}/spareparts/{detail}', [TaskController::class, 'removeSparepart'])->name('tasks.removeSparepart');
-    Route::post('/tasks/{service}/photos', [TaskController::class, 'uploadPhoto'])->name('tasks.uploadPhoto');
-    Route::delete('/tasks/{service}/photos/{photo}', [TaskController::class, 'deletePhoto'])->name('tasks.deletePhoto');
+    Route::post('/tasks/{task}/status', [TaskController::class, 'updateStatus'])->name('tasks.updateStatus');
+    Route::post('/tasks/{task}/spareparts', [TaskController::class, 'addSparepart'])->name('tasks.addSparepart');
+    Route::delete('/tasks/{task}/spareparts/{detail}', [TaskController::class, 'removeSparepart'])->name('tasks.removeSparepart');
+    Route::post('/tasks/{task}/photos', [TaskController::class, 'uploadPhoto'])->name('tasks.uploadPhoto');
+    Route::delete('/tasks/{task}/photos/{photo}', [TaskController::class, 'deletePhoto'])->name('tasks.deletePhoto');
 });
 
-// Customer Routes
+// Customer Routes (Authenticated)
 Route::middleware(['auth', 'role:customer'])->prefix('customer')->name('customer.')->group(function () {
     Route::get('/dashboard', [CustomerDashboardController::class, 'index'])->name('dashboard');
     Route::get('/services/{service}', [CustomerServiceController::class, 'show'])->name('services.show');
+    Route::post('/services/{service}/payment', [CustomerServiceController::class, 'createPayment'])->name('services.createPayment');
+    Route::post('/services/{service}/comment', [CustomerServiceController::class, 'addComment'])->name('services.addComment');
+});
+
+// Shared Comment Routes (all authenticated roles)
+Route::middleware(['auth'])->group(function () {
+    Route::post('/services/{service}/comments', [CommentController::class, 'store'])->name('comments.store');
+    Route::delete('/services/{service}/comments/{comment}', [CommentController::class, 'destroy'])->name('comments.destroy');
 });
 
 Route::middleware('auth')->group(function () {

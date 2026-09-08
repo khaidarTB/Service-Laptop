@@ -32,7 +32,7 @@ class TaskController extends Controller
                       ->orWhere('laptop_type', 'like', "%{$search}%");
                 });
             })
-            ->with(['customer', 'details', 'photos'])
+            ->with(['customer', 'details', 'photos', 'comments'])
             ->latest()
             ->paginate(10)
             ->withQueryString();
@@ -42,12 +42,11 @@ class TaskController extends Controller
 
     public function show(Service $task)
     {
-        // Ensure assigned technician
         if ($task->assigned_technician_id !== auth()->id()) {
             abort(403, 'Anda tidak memiliki akses ke tiket servis ini.');
         }
 
-        $task->load(['customer', 'details.sparepart', 'statusLogs.user', 'photos']);
+        $task->load(['customer', 'details.sparepart', 'statusLogs.user', 'photos', 'comments.user', 'latestApproval']);
         $spareparts = Sparepart::where('stock', '>', 0)->get();
 
         return view('teknisi.tasks.show', compact('task', 'spareparts'));
@@ -108,7 +107,7 @@ class TaskController extends Controller
             return redirect()->back()->with('error', 'Status tidak berubah.');
         }
 
-        DB::transaction(function() use ($task, $oldStatus, $newStatus, $request) {
+        DB::transaction(function() use ($task, $newStatus, $request) {
             $data = ['status' => $newStatus];
             if ($newStatus === 'selesai' || $newStatus === 'diambil') {
                 $data['date_completed'] = Carbon::now();
@@ -118,21 +117,12 @@ class TaskController extends Controller
 
             ServiceStatusLog::create([
                 'service_id' => $task->id,
-                'old_status' => $oldStatus,
+                'old_status' => $task->getOriginal('status'),
                 'new_status' => $newStatus,
                 'notes' => $request->notes ?? ('Status diperbarui oleh Teknisi ' . auth()->user()->name),
                 'changed_by' => auth()->id(),
             ]);
         });
-
-        $waUrl = $task->whatsapp_url;
-        $notifyTriggers = ['pemeriksaan', 'menunggu_persetujuan', 'perbaikan', 'selesai'];
-
-        if (in_array($newStatus, $notifyTriggers) && $waUrl) {
-            return redirect()->route('teknisi.tasks.show', $task->id)
-                ->with('success', 'Status berhasil diperbarui menjadi ' . $task->status_label . '!')
-                ->with('wa_url', $waUrl);
-        }
 
         return redirect()->route('teknisi.tasks.show', $task->id)
             ->with('success', 'Status berhasil diperbarui menjadi ' . $task->status_label . '!');

@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Welcome</title>
+    <title>halo guyd</title>
 </head>
 <body>
     <h1>Welcome</h1>

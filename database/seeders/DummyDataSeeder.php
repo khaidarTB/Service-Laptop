@@ -10,6 +10,8 @@ use App\Models\ServiceDetail;
 use App\Models\Transaction;
 use App\Models\ServiceStatusLog;
 use App\Models\ServicePhoto;
+use App\Models\ServiceComment;
+use App\Models\ServiceApproval;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 use Carbon\Carbon;
@@ -353,6 +355,43 @@ class DummyDataSeeder extends Seeder
             'notes' => 'Diagnosa selesai. Mengirim rincian estimasi biaya ke WhatsApp pelanggan.',
             'changed_by' => $budi->id,
             'created_at' => Carbon::now()->subHours(4),
+        ]);
+
+        // Demo Comments
+        ServiceComment::create([
+            'service_id' => $srv1->id,
+            'user_id' => $budi->id,
+            'message' => 'Laptop sudah selesai diperbaikan. Thermal paste baru sudah terpasang dan SSD NVMe 512GB berjalan normal.',
+        ]);
+
+        ServiceComment::create([
+            'service_id' => $srv1->id,
+            'user_id' => $custUser1->id,
+            'message' => 'Terima kasih Mas Budi! Laptop sudah saya ambil dan berjalan lancar.',
+        ]);
+
+        ServiceComment::create([
+            'service_id' => $srv2->id,
+            'user_id' => $agus->id,
+            'message' => 'LCD panel sudah sampai di workshop, besok mulai proses pemasangan.',
+        ]);
+
+        ServiceComment::create([
+            'service_id' => $srv2->id,
+            'user_id' => $custUser2->id,
+            'message' => 'Baik Mas, ditunggu. Kira-kira kapan selesainya ya?',
+        ]);
+
+        ServiceComment::create([
+            'service_id' => $srv2->id,
+            'user_id' => $agus->id,
+            'message' => 'Estimasi 1-2 hari lagi ya Kak. Keyboard juga sedang dipesan.',
+        ]);
+
+        ServiceComment::create([
+            'service_id' => $srv3->id,
+            'user_id' => $budi->id,
+            'message' => 'Pak/Bu Dian, biaya perbaikan adalah Rp 950.000 (Jasa: Rp 200.000 + Baterai: Rp 750.000). Mohon konfirmasi apakah bisa dilanjutkan.',
         ]);
     }
 }

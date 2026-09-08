@@ -167,6 +167,152 @@
             </div>
         </div>
 
+        <!-- Approval Status Card -->
+        @if($service->latestApproval)
+            <div class="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-xs space-y-4">
+                <h3 class="font-extrabold text-slate-900 text-base border-b border-slate-100 pb-3 flex items-center gap-2">
+                    <i class="fas fa-clipboard-check text-blue-600"></i> Keputusan Persetujuan
+                </h3>
+                <div class="flex items-center gap-4">
+                    <span class="{{ $service->latestApproval->decision === 'approved' ? 'bg-emerald-100 text-emerald-700 border-emerald-300' : 'bg-red-100 text-red-700 border-red-300' }} px-4 py-2 rounded-2xl text-sm font-extrabold border">
+                        {{ $service->latestApproval->decision === 'approved' ? 'Disetujui' : 'Ditolak' }}
+                    </span>
+                    @if($service->latestApproval->decision === 'approved' && $service->latestApproval->approved_amount)
+                        <span class="text-sm font-bold text-slate-700">Biaya Disetujui: <b class="text-blue-600">Rp {{ number_format($service->latestApproval->approved_amount, 0, ',', '.') }}</b></span>
+                    @endif
+                </div>
+                @if($service->latestApproval->note)
+                    <div class="bg-slate-50 p-4 rounded-2xl border border-slate-100 text-xs text-slate-600 leading-relaxed">
+                        <span class="font-bold text-slate-400 uppercase">Catatan:</span>
+                        <p class="mt-1">{{ $service->latestApproval->note }}</p>
+                    </div>
+                @endif
+            </div>
+        @endif
+
+        <!-- Customer Action Card -->
+        @if($service->status === 'menunggu_persetujuan' && !$service->latestApproval)
+            <div x-data="{ showRejectModal: false }" class="bg-white p-8 rounded-3xl border-2 border-blue-200 shadow-lg space-y-5">
+                <div class="text-center space-y-2">
+                    <div class="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-blue-50 text-blue-600">
+                        <i class="fas fa-gavel text-2xl"></i>
+                    </div>
+                    <h3 class="font-extrabold text-slate-900 text-xl">Perlu Keputusan Anda</h3>
+                    <p class="text-sm text-slate-500">Teknisi menunggu persetujuan Anda mengenai perbaikan dan biaya yang diperlukan.</p>
+                </div>
+                <div class="flex flex-col sm:flex-row items-center justify-center gap-4 pt-2">
+                    <a href="{{ route('customer.services.approve-form', $service->id) }}" class="w-full sm:w-auto px-8 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold rounded-2xl transition text-sm flex items-center justify-center gap-2">
+                        <i class="fas fa-check-circle"></i> Setujui Perbaikan
+                    </a>
+                    <button @click="showRejectModal = true" class="w-full sm:w-auto px-8 py-3 bg-red-50 hover:bg-red-100 text-red-600 font-extrabold rounded-2xl transition text-sm border border-red-200 flex items-center justify-center gap-2">
+                        <i class="fas fa-times-circle"></i> Tolak
+                    </button>
+                </div>
+
+                <!-- Reject Modal -->
+                <div x-show="showRejectModal" x-cloak class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100" x-transition:leave="transition ease-in duration-150" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0">
+                    <div @click.away="showRejectModal = false" x-show="showRejectModal" x-transition class="bg-white rounded-3xl shadow-2xl w-full max-w-md p-8 space-y-5" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100">
+                        <div class="text-center space-y-2">
+                            <div class="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-red-50 text-red-600">
+                                <i class="fas fa-times-circle text-xl"></i>
+                            </div>
+                            <h4 class="font-extrabold text-slate-900 text-lg">Tolak Perbaikan?</h4>
+                            <p class="text-xs text-slate-500">Perbaikan untuk tiket ini akan ditolak dan tidak dilanjutkan.</p>
+                        </div>
+                        <form action="{{ route('customer.services.approve', $service->id) }}" method="POST">
+                            @csrf
+                            <input type="hidden" name="decision" value="rejected">
+                            <div class="flex items-center gap-3 pt-2">
+                                <button type="submit" class="flex-1 py-3 bg-red-600 hover:bg-red-700 text-white font-extrabold rounded-2xl transition text-sm">Ya, Tolak Perbaikan</button>
+                                <button type="button" @click="showRejectModal = false" class="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-2xl transition text-sm">Batal</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        @endif
+
+        <!-- Payment Card -->
+        @if($service->status === 'selesai' && $service->transaction && $service->transaction->payment_status === 'Belum Bayar')
+            <div class="bg-white p-6 rounded-3xl border-2 border-amber-200 shadow-xs space-y-4">
+                <div class="flex items-start gap-4">
+                    <div class="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 shrink-0">
+                        <i class="fas fa-file-invoice-dollar text-xl"></i>
+                    </div>
+                    <div class="flex-1 space-y-1">
+                        <h3 class="font-extrabold text-slate-900 text-base">Tagihan Belum Dibayar</h3>
+                        <p class="text-xs text-slate-500">Perbaikan telah selesai. Silakan selesaikan pembayaran untuk mengambil laptop Anda.</p>
+                        <div class="flex items-center gap-2 pt-1">
+                            <span class="text-xs text-slate-400 font-bold">Total:</span>
+                            <span class="text-lg font-black text-blue-600">Rp {{ number_format($service->transaction->total_amount, 0, ',', '.') }}</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="flex justify-end">
+                    <a href="#" class="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-extrabold rounded-2xl transition text-sm flex items-center gap-2">
+                        <i class="fas fa-credit-card"></i> Bayar Sekarang
+                    </a>
+                </div>
+            </div>
+        @endif
+
+        <!-- Diskusi / Komentar Section -->
+        @php
+            $visibleComments = $service->comments->filter(fn($c) => !$c->is_internal);
+        @endphp
+        <div class="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200/80 shadow-xs space-y-6">
+            <h3 class="font-extrabold text-slate-900 text-base border-b border-slate-100 pb-3 flex items-center gap-2">
+                <i class="fas fa-comments text-blue-600"></i> Diskusi & Komentar
+            </h3>
+
+            <div class="space-y-4">
+                @forelse($visibleComments as $comment)
+                    @php
+                        $isCustomer = $comment->user && $comment->user->isCustomer();
+                    @endphp
+                    <div class="flex gap-3 {{ $isCustomer ? 'flex-row-reverse' : '' }}">
+                        <div class="w-9 h-9 rounded-2xl flex items-center justify-center text-xs font-extrabold shrink-0 {{ $isCustomer ? 'bg-blue-100 text-blue-600' : 'bg-slate-100 text-slate-600' }}">
+                            {{ strtoupper(substr($comment->user->name ?? '?', 0, 1)) }}
+                        </div>
+                        <div class="max-w-[75%] space-y-1">
+                            <div class="flex items-center gap-2 {{ $isCustomer ? 'flex-row-reverse' : '' }}">
+                                <span class="text-xs font-extrabold text-slate-800">{{ $comment->user->name ?? 'Unknown' }}</span>
+                                <span class="text-[10px] font-bold px-1.5 py-0.5 rounded-md {{ $isCustomer ? 'bg-blue-50 text-blue-600' : 'bg-slate-100 text-slate-500' }}">
+                                    {{ ucfirst($comment->user->role ?? '-') }}
+                                </span>
+                                <span class="text-[10px] text-slate-400">{{ $comment->created_at->diffForHumans() }}</span>
+                            </div>
+                            <div class="{{ $isCustomer ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-800' }} px-4 py-3 rounded-2xl {{ $isCustomer ? 'rounded-tr-sm' : 'rounded-tl-sm' }} text-xs leading-relaxed">
+                                {{ $comment->message }}
+                            </div>
+                        </div>
+                    </div>
+                @empty
+                    <div class="text-center py-8 text-slate-400 text-xs">
+                        <i class="fas fa-message-dots text-2xl mb-2 text-slate-300"></i>
+                        <p>Belum ada komentar. Mulai diskusi dengan teknisi di sini.</p>
+                    </div>
+                @endforelse
+            </div>
+
+            @if(auth()->check() && $service->customer_id === auth()->id())
+                <form action="{{ route('comments.store', $service->id) }}" method="POST" class="pt-4 border-t border-slate-100">
+                    @csrf
+                    <div class="flex gap-3">
+                        <div class="w-9 h-9 rounded-2xl flex items-center justify-center text-xs font-extrabold shrink-0 bg-blue-100 text-blue-600">
+                            {{ strtoupper(substr(auth()->user()->name, 0, 1)) }}
+                        </div>
+                        <div class="flex-1 flex gap-2">
+                            <input type="text" name="message" required maxlength="1000" placeholder="Tulis komentar..." class="flex-1 bg-slate-50 border border-slate-200 rounded-2xl px-4 py-2.5 text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400 transition">
+                            <button type="submit" class="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-extrabold rounded-2xl transition text-xs shrink-0">
+                                <i class="fas fa-paper-plane mr-1"></i> Kirim
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            @endif
+        </div>
+
     </main>
 
     <footer class="py-8 text-center text-xs text-slate-400 border-t border-slate-200">
