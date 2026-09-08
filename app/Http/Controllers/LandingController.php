@@ -37,20 +37,28 @@ class LandingController extends Controller
 
             $userId = auth()->check() && auth()->user()->role === 'customer' ? auth()->id() : null;
 
-            $customer = Customer::firstOrCreate(
-                ['whatsapp' => $request->whatsapp],
-                [
-                    'user_id' => $userId,
-                    'name' => $request->name,
-                    'address' => $request->address
-                ]
-            );
-            
-            if (!$customer->wasRecentlyCreated) {
+            // Cari atau buat data Customer berdasarkan user_id / No WhatsApp
+            if ($userId) {
+                $customer = Customer::where('user_id', $userId)->first();
+            } else {
+                $customer = Customer::where('whatsapp', $request->whatsapp)->first();
+            }
+
+            if ($customer) {
+                // Update data customer dan pastikan user_id-nya terikat dengan akun login
                 $customer->update([
                     'name' => $request->name,
+                    'whatsapp' => $request->whatsapp,
                     'address' => $request->address,
                     'user_id' => $userId ?? $customer->user_id
+                ]);
+            } else {
+                // Buat customer baru jika belum ada
+                $customer = Customer::create([
+                    'user_id' => $userId,
+                    'name' => $request->name,
+                    'whatsapp' => $request->whatsapp,
+                    'address' => $request->address
                 ]);
             }
 
