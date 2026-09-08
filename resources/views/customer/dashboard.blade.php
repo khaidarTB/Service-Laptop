@@ -16,11 +16,217 @@
             </a>
         </div>
 
-        <!-- Active Services List -->
-        <div class="space-y-6">
-            <h3 class="font-black text-slate-900 text-xl tracking-tight flex items-center gap-2">
-                <i class="fas fa-laptop-medical text-blue-600"></i> Unit Laptop Dalam Perbaikan ({{ $activeServices->count() }})
-            </h3>
+        <!-- POP-UP NOTIFIKASI BERHASIL SUBMIT BOOKING -->
+@if(session('success'))
+    <div x-data="{ openSuccessModal: true }" x-show="openSuccessModal" x-cloak
+        class="fixed inset-0 z-50 flex items-center justify-center p-4"
+        x-transition:enter="transition ease-out duration-200"
+        x-transition:enter-start="opacity-0"
+        x-transition:enter-end="opacity-100"
+        x-transition:leave="transition ease-in duration-150"
+        x-transition:leave-start="opacity-100"
+        x-transition:leave-end="opacity-0">
+        
+        <!-- Background Overlay -->
+        <div class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm" @click="openSuccessModal = false"></div>
+
+        <!-- Card Pop-up Success -->
+        <div class="relative bg-white rounded-3xl shadow-2xl w-full max-w-sm p-6 sm:p-8 space-y-5 z-10 text-center"
+            x-transition:enter="transition ease-out duration-200"
+            x-transition:enter-start="opacity-0 scale-95"
+            x-transition:enter-end="opacity-100 scale-100">
+            
+            <!-- Icon Centang Hijau -->
+            <div class="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto shadow-lg shadow-emerald-500/20">
+                <i class="fas fa-check text-2xl"></i>
+            </div>
+
+            <!-- Pesan Berhasil -->
+            <div class="space-y-2">
+                <h3 class="text-xl font-black text-slate-900">Booking Berhasil!</h3>
+                <p class="text-xs text-slate-500 leading-relaxed">
+                    {{ session('success') }}
+                </p>
+            </div>
+
+            <!-- Tombol Tutup -->
+            <button @click="openSuccessModal = false"
+                class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold py-3 rounded-2xl text-xs transition shadow-lg shadow-emerald-600/30 cursor-pointer">
+                Siap, Mengerti!
+            </button>
+        </div>
+    </div>
+@endif
+
+<!-- POP-UP NOTIFIKASI ERROR (JIKA TERJADI KESALAHAN) -->
+@if(session('error'))
+    <div x-data="{ openErrorModal: true }" x-show="openErrorModal" x-cloak
+        class="fixed inset-0 z-50 flex items-center justify-center p-4"
+        x-transition:enter="transition ease-out duration-200"
+        x-transition:enter-start="opacity-0"
+        x-transition:enter-end="opacity-100"
+        x-transition:leave="transition ease-in duration-150"
+        x-transition:leave-start="opacity-100"
+        x-transition:leave-end="opacity-0">
+        
+        <div class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm" @click="openErrorModal = false"></div>
+
+        <div class="relative bg-white rounded-3xl shadow-2xl w-full max-w-sm p-6 sm:p-8 space-y-5 z-10 text-center">
+            <div class="w-16 h-16 bg-rose-100 text-rose-600 rounded-full flex items-center justify-center mx-auto shadow-lg shadow-rose-500/20">
+                <i class="fas fa-exclamation text-2xl"></i>
+            </div>
+
+            <div class="space-y-2">
+                <h3 class="text-xl font-black text-slate-900">Gagal Mengirim!</h3>
+                <p class="text-xs text-slate-500 leading-relaxed">
+                    {{ session('error') }}
+                </p>
+            </div>
+
+            <button @click="openErrorModal = false"
+                class="w-full bg-rose-600 hover:bg-rose-700 text-white font-extrabold py-3 rounded-2xl text-xs transition shadow-lg shadow-rose-600/30 cursor-pointer">
+                Tutup
+            </button>
+        </div>
+    </div>
+@endif
+
+<!-- Active Services List -->
+<div class="space-y-6" x-data="{ openAddModal: false }">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <h3 class="font-black text-slate-900 text-xl tracking-tight flex items-center gap-2">
+            <i class="fas fa-laptop-medical text-blue-600"></i> Unit Laptop Dalam Perbaikan ({{ $activeServices->count() }})
+        </h3>
+        
+        <!-- Tombol Buka Pop-up -->
+        <button type="button" @click="openAddModal = true" class="bg-blue-600 hover:bg-blue-700 text-white font-extrabold px-5 py-2.5 rounded-2xl text-xs transition shadow-lg shadow-blue-600/30 flex items-center gap-2 w-fit cursor-pointer">
+            <i class="fas fa-plus"></i> Tambah Unit Servis
+        </button>
+    </div>
+
+    <!-- POP-UP / MODAL FORM BOOKING -->
+    <div x-show="openAddModal" x-cloak
+        class="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto"
+        x-transition:enter="transition ease-out duration-200"
+        x-transition:enter-start="opacity-0"
+        x-transition:enter-end="opacity-100"
+        x-transition:leave="transition ease-in duration-150"
+        x-transition:leave-start="opacity-100"
+        x-transition:leave-end="opacity-0">
+        
+        <!-- Background Transparan -->
+        <div class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm" @click="openAddModal = false"></div>
+
+        <!-- Card Pop-up -->
+        <div class="relative bg-white rounded-3xl shadow-2xl w-full max-w-4xl p-6 sm:p-8 space-y-6 z-10 max-h-[90vh] overflow-y-auto my-auto"
+            x-transition:enter="transition ease-out duration-200"
+            x-transition:enter-start="opacity-0 scale-95"
+            x-transition:enter-end="opacity-100 scale-100">
+            
+            <!-- Tombol Close -->
+            <button type="button" @click="openAddModal = false" class="absolute top-6 right-6 text-slate-400 hover:text-slate-600 transition">
+                <i class="fas fa-times text-xl"></i>
+            </button>
+
+            <!-- Header Pop-up -->
+            <div class="text-center space-y-2">
+                <span class="bg-blue-50 text-blue-600 border border-blue-200 text-[11px] font-bold px-4 py-1.5 rounded-full uppercase tracking-wider inline-block">
+                    REGISTRASI SERVIS ONLINE
+                </span>
+                <h3 class="text-2xl font-black text-slate-900">Formulir Booking Servis Laptop</h3>
+                <p class="text-xs text-slate-500">
+                    Dapatkan Nomor Tiket Otomatis (SRV-YYYYMMDD-001) untuk memantau status perbaikan.
+                </p>
+            </div>
+
+            <!-- Form Utama -->
+            <form method="POST" action="{{ route('booking.store') }}" class="space-y-6 text-xs">
+                @csrf
+
+                <!-- Grid 2 Kolom -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+                    <!-- KOLOM KIRI: Data Diri Pelanggan -->
+                    <div class="bg-slate-50/60 p-5 rounded-2xl border border-slate-200/80 space-y-4">
+                        <h4 class="font-extrabold text-slate-900 text-sm flex items-center gap-2 pb-2 border-b border-slate-200">
+                            <i class="fas fa-user-circle text-blue-600 text-base"></i> Data Diri Pelanggan
+                        </h4>
+
+                        <!-- Nama Lengkap -->
+                        <div>
+                            <label class="block font-bold text-slate-700 uppercase text-[10px] tracking-wider mb-1">Nama Lengkap *</label>
+                            <input type="text" name="name" value="{{ auth()->user()->name }}" required
+                                class="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-600/30 focus:border-blue-600 transition">
+                        </div>
+
+                        <!-- No WhatsApp -->
+                        <div>
+                            <label class="block font-bold text-slate-700 uppercase text-[10px] tracking-wider mb-1">No. WhatsApp *</label>
+                            <input type="text" name="whatsapp" placeholder="Contoh: 081234567890" required
+                                class="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-600/30 focus:border-blue-600 transition">
+                        </div>
+
+                        <!-- Alamat Lengkap -->
+                        <div>
+                            <label class="block font-bold text-slate-700 uppercase text-[10px] tracking-wider mb-1">Alamat Lengkap *</label>
+                            <textarea name="address" rows="3" required placeholder="Alamat rumah / kantor..."
+                                class="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-600/30 focus:border-blue-600 transition resize-none"></textarea>
+                        </div>
+                    </div>
+
+                    <!-- KOLOM KANAN: Detail Laptop & Keluhan -->
+                    <div class="bg-slate-50/60 p-5 rounded-2xl border border-slate-200/80 space-y-4">
+                        <h4 class="font-extrabold text-slate-900 text-sm flex items-center gap-2 pb-2 border-b border-slate-200">
+                            <i class="fas fa-laptop text-blue-600 text-base"></i> Detail Laptop & Keluhan
+                        </h4>
+
+                        <!-- Merek & Tipe/Seri -->
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block font-bold text-slate-700 uppercase text-[10px] tracking-wider mb-1">Merek *</label>
+                                <input type="text" name="laptop_brand" placeholder="Asus / Lenovo" required
+                                    class="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-3 focus:outline-none focus:ring-2 focus:ring-blue-600/30 focus:border-blue-600 transition">
+                            </div>
+                            <div>
+                                <label class="block font-bold text-slate-700 uppercase text-[10px] tracking-wider mb-1">Tipe / Seri *</label>
+                                <input type="text" name="laptop_type" placeholder="ROG G531" required
+                                    class="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-3 focus:outline-none focus:ring-2 focus:ring-blue-600/30 focus:border-blue-600 transition">
+                            </div>
+                        </div>
+
+                        <!-- Kelengkapan Dititipkan -->
+                        <div>
+                            <label class="block font-bold text-slate-700 uppercase text-[10px] tracking-wider mb-1">Kelengkapan Dititipkan</label>
+                            <input type="text" name="equipment" placeholder="Contoh: Charger, Tas Laptop"
+                                class="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-600/30 focus:border-blue-600 transition">
+                        </div>
+
+                        <!-- Keluhan Kerusakan -->
+                        <div>
+                            <label class="block font-bold text-slate-700 uppercase text-[10px] tracking-wider mb-1">Keluhan Kerusakan *</label>
+                            <textarea name="complaint" rows="3" required placeholder="Jelaskan kerusakan laptop (misal: Mati total, layar bergaris, tidak bisa cas)..."
+                                class="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-600/30 focus:border-blue-600 transition resize-none"></textarea>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- Tombol Aksi -->
+                <div class="flex justify-end gap-3 pt-2">
+                    <button type="button" @click="openAddModal = false"
+                        class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-6 py-3 rounded-2xl text-xs transition cursor-pointer">
+                        Batal
+                    </button>
+                    <button type="submit"
+                        class="bg-blue-600 hover:bg-blue-700 text-white font-extrabold px-8 py-3 rounded-2xl text-xs transition shadow-lg shadow-blue-600/30 flex items-center gap-2 cursor-pointer">
+                        <i class="fas fa-paper-plane"></i> Kirim Booking Servis
+                    </button>
+                </div>
+            </form>
+
+        </div>
+    </div> 
+</div>
 
             @forelse($activeServices as $s)
                 <div class="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200/80 shadow-xs space-y-6" x-data="serviceCard_{{ $s->id }}()">
