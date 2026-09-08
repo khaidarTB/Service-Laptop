@@ -29,16 +29,14 @@ class LandingController extends Controller
             'laptop_type' => 'required|string|max:100',
             'complaint' => 'required|string',
             'equipment' => 'nullable|string',
-            'cart_items' => 'nullable|string', // JSON payload from sparepart cart drawer
+            'cart_items' => 'nullable|string', 
         ]);
 
         try {
             DB::beginTransaction();
 
-            // Link user if logged in
             $userId = auth()->check() && auth()->user()->role === 'customer' ? auth()->id() : null;
 
-            // Create or update customer
             $customer = Customer::firstOrCreate(
                 ['whatsapp' => $request->whatsapp],
                 [
@@ -69,7 +67,6 @@ class LandingController extends Controller
                 'date_received' => Carbon::now(),
             ]);
 
-            // Save status log
             ServiceStatusLog::create([
                 'service_id' => $service->id,
                 'old_status' => null,
@@ -78,7 +75,6 @@ class LandingController extends Controller
                 'changed_by' => auth()->id(),
             ]);
 
-            // Handle Sparepart Cart items if customer selected spareparts in booking
             if ($request->filled('cart_items')) {
                 $cartItems = json_decode($request->cart_items, true);
                 if (is_array($cartItems)) {
@@ -105,10 +101,14 @@ class LandingController extends Controller
 
             DB::commit();
 
+            if (auth()->check()) {
+                return back()->with('success', 'Booking servis berhasil dikirim! Nomor Tiket Anda: ' . $service->ticket_number);
+            }
+
             return redirect('/#daftar')->with('success', 'Booking berhasil! Nomor Tiket Servis Anda: ' . $service->ticket_number . '. Simpan nomor ini untuk melacak status servis!');
         } catch (\Exception $e) {
             DB::rollBack();
-            return redirect('/#daftar')->with('error', 'Terjadi kesalahan sistem: ' . $e->getMessage());
+            return back()->with('error', 'Terjadi kesalahan sistem: ' . $e->getMessage());
         }
     }
 }
